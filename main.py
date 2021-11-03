@@ -4,11 +4,12 @@ import maya
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import sqlite3 as sq
+import iocextract
 
 start_time = time.time()
 
 def links():
-    account = ["RedDrip7", "kyleehmke", "Timele9527","clearskysec"]
+    account = ["360CoreSec", "RedDrip7", "Timele9527","clearskysec", "blackorbird"] # , "kyleehmke", "malwrhunterteam"
     for i in range(len(account)):
         account[i] = ("https://twitter.com/" + account[i])
     return (account)
@@ -58,45 +59,79 @@ def parsing(driver,con):
             l = len(dt_new) - len(dt_last)
             for i in range (l) : dt_last.append(dt_last[0])
 
-        # Берем последнее известный месяц
+        # 我们取最后一个已知月份
         k = len(dt_new) - 1
-        #Если дата не раньше февраля
-        if dt_new[k].month >= 1 and dt_new[k].year == 2021:
-            for i in range(len(tweets_area)):
-                # Если список пуст
-                if (not dt_last) or (dt_last[i] != dt_new[i]):
-                    name = tweets_area[i].find('span',
-                                               {'class': [
-                                                   'css-901oao css-16my406 r-poiln3 r-bcqeeo r-qvutc0']}).get_text(
-                        strip=True)
-                    linkTweet = tweets_area[i].find('a', {'class':
-                        ['css-4rbku5 css-18t94o4 css-901oao r-14j79pv r-1loqt21 r-1q142lx r-37j5jr r-a023e6 r-16dba41 r-rjixqe r-bcqeeo r-3s2u2q r-qvutc0']}).get('href')
-                    linkTweet = ('https://twitter.com' + linkTweet)
-                    need_value = tweets_area[i].find('div', {'class': [
-                        'css-901oao r-18jsvk2 r-37j5jr r-a023e6 r-16dba41 r-rjixqe r-bcqeeo r-bnwqim r-qvutc0a']})
+        # 如果日期不早于二月
+        try:
+            if dt_new[k].month >= 1 and dt_new[k].year == 2021:
+                for i in range(len(tweets_area)):
+                    # 如果列表为空
+                    if (not dt_last) or (dt_last[i] != dt_new[i]):
+                        name = tweets_area[i].find('span',
+                                                   {'class': [
+                                                       'css-901oao css-16my406 r-poiln3 r-bcqeeo r-qvutc0']}).get_text(
+                            strip=True)
 
-                    url = re.findall(r'http[s:]?\/{0,2}\w+\[.][^ \n]+', need_value.text)
-                    hashtag = re.findall(r'#\w+', need_value.text)
-                    mail = re.findall(r'\w+@\w+\[.]\w+', need_value.text)
-                    sha256 = re.findall(r'\b[a-zA-Z0-9]{64}\b', need_value.text)
-                    sha1 = re.findall(r'\b[a-zA-Z0-9]{40}\b', need_value.text)
-                    md5 = re.findall(r'\b[a-zA-Z0-9]{32}\b', need_value.text)
-                    domain = re.findall(r'\b[A-Za-z][^ @\n]+\[.][space|com|li|org|biz|site|life]+\b', need_value.text)
-                    Insert(con, name, linkTweet, dt_new[i],hashtag, 'Url', url)
-                    Insert(con, name, linkTweet, dt_new[i],hashtag, 'Mail', mail)
-                    Insert(con, name, linkTweet, dt_new[i],hashtag, 'Domain', domain)
-                    Insert(con, name, linkTweet, dt_new[i],hashtag, 'Md5', md5)
-                    Insert(con, name, linkTweet, dt_new[i],hashtag, 'sha256', sha256)
-                    Insert(con, name, linkTweet, dt_new[i],hashtag, 'sha1', sha1)
-        else: break
-        dt_last.clear()
-        for i in range (len(dt_new)):
-            dt_last.append(dt_new[i])
-        dt_new.clear()
-        driver.execute_script("window.scrollTo(0, arguments[0])", SCROLL_HEIGHT)
-        # 1080 - height on the monitor
-        SCROLL_HEIGHT = SCROLL_HEIGHT + 1080
-        time.sleep(SCROLL_PAUSE_TIME)
+                        linkTweet = tweets_area[i].find('a', {'class':
+                            ['css-4rbku5 css-18t94o4 css-901oao r-9ilb82 r-1loqt21 r-1q142lx r-37j5jr r-a023e6 r-16dba41 r-rjixqe r-bcqeeo r-3s2u2q r-qvutc0']}).get('href')
+                        linkTweet = ('https://twitter.com' + linkTweet)
+                        need_value = tweets_area[i].find('div', {'class': [
+                            'css-901oao r-1fmj7o5 r-37j5jr r-a023e6 r-16dba41 r-rjixqe r-bcqeeo r-bnwqim r-qvutc0']})
+
+                        content = need_value.text
+                        if content == None:
+                            continue
+                        try:
+                            url = re.findall(r'http[s:]?\/{0,2}\w+\[.][^ \n]+', content)
+                            hashtag = re.findall(r'#\w+', content)
+                            mail = re.findall(r'\w+@\w+\[.]\w+', content)
+                            sha256 = re.findall(r'\b[a-zA-Z0-9]{64}\b', content)
+                            sha1 = re.findall(r'\b[a-zA-Z0-9]{40}\b', content)
+                            md5 = re.findall(r'\b[a-zA-Z0-9]{32}\b', content)
+                            domain = re.findall(r'\b[A-Za-z][^ @\n]+\[.][space|com|li|org|biz|site|life|cn]+\b', content)
+
+
+                            # Get some valid obfuscated ip addresses.
+                            IPV4_RE = re.compile(r"""
+                                    (?:^|
+                                        (?![^\d\.])
+                                    )
+                                    (?:
+                                        (?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])
+                                        [\[\(\\]*?\.[\]\)]*?
+                                    ){3}
+                                    (?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])
+                                    (?:(?=[^\d\.])|$)
+                                """, re.VERBOSE)
+                            ipv4=""
+                            for ip_address in IPV4_RE.finditer(content):
+                                ipv4 = ip_address.group(0)
+                                Insert(con, name, linkTweet, dt_new[i], hashtag, 'ip', ipv4)
+
+                            Insert(con, name, linkTweet, dt_new[i],hashtag, 'Url', url)
+                            Insert(con, name, linkTweet, dt_new[i],hashtag, 'Mail', mail)
+                            Insert(con, name, linkTweet, dt_new[i],hashtag, 'Domain', domain)
+                            Insert(con, name, linkTweet, dt_new[i],hashtag, 'Md5', md5)
+                            Insert(con, name, linkTweet, dt_new[i],hashtag, 'sha256', sha256)
+                            Insert(con, name, linkTweet, dt_new[i],hashtag, 'sha1', sha1)
+                            Insert(con, name, linkTweet, dt_new[i], hashtag, 'ip', ipv4)
+                        except Exception as err:
+                            print(err)
+                            continue
+
+            else: break
+            dt_last.clear()
+            for i in range (len(dt_new)):
+                dt_last.append(dt_new[i])
+            dt_new.clear()
+            driver.execute_script("window.scrollTo(0, arguments[0])", SCROLL_HEIGHT)
+            # 1080 - height on the monitor
+            SCROLL_HEIGHT = SCROLL_HEIGHT + 1080
+            time.sleep(SCROLL_PAUSE_TIME)
+
+        except Exception as err:
+            print(err)
+            #continue
 
 
 
