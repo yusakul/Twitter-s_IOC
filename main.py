@@ -77,11 +77,11 @@ def parsing(driver,con):
                         linkTweet = ('https://twitter.com' + linkTweet)
                         need_value = tweets_area[i].find('div', {'class': [
                             'css-901oao r-1fmj7o5 r-37j5jr r-a023e6 r-16dba41 r-rjixqe r-bcqeeo r-bnwqim r-qvutc0']})
-
-                        content = need_value.text
-                        if content == None:
-                            continue
                         try:
+                            content = need_value.text
+                            if content == None:
+                                continue
+
                             url = re.findall(r'http[s:]?\/{0,2}\w+\[.][^ \n]+', content)
                             hashtag = re.findall(r'#\w+', content)
                             mail = re.findall(r'\w+@\w+\[.]\w+', content)
